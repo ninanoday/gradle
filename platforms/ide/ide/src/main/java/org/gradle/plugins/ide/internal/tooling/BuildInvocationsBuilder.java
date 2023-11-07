@@ -23,7 +23,6 @@ import com.google.common.collect.Sets;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
-import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.internal.project.ProjectTaskLister;
 import org.gradle.api.internal.tasks.PublicTaskSpecification;
 import org.gradle.plugins.ide.internal.tooling.model.DefaultBuildInvocations;
@@ -72,12 +71,12 @@ public class BuildInvocationsBuilder implements ToolingModelBuilder {
         findTasks(project, selectorsByName, visibleTasks);
         for (String selectorName : selectorsByName.keySet()) {
             LaunchableGradleTaskSelector selector = selectorsByName.get(selectorName);
-            selectors.add(selector.
-                setName(selectorName).
-                setTaskName(selectorName).
-                setProjectIdentifier(projectIdentifier).
-                setDisplayName(selectorName + " in " + project + " and subprojects.").
-                setPublic(visibleTasks.contains(selectorName)));
+            selectors.add(selector
+                .setName(selectorName)
+                .setTaskName(selectorName)
+                .setProjectIdentifier(projectIdentifier)
+                .setDisplayName(selectorName + " in " + project + " and subprojects.")
+                .setPublic(visibleTasks.contains(selectorName)));
         }
 
         // construct project tasks
@@ -97,11 +96,7 @@ public class BuildInvocationsBuilder implements ToolingModelBuilder {
     // build tasks without project reference
     private List<LaunchableGradleTask> tasks(Project project, DefaultProjectIdentifier projectIdentifier) {
         return taskLister.listProjectTasks(project).stream()
-            .map(task -> {
-                LaunchableGradleTask launchableGradleTask = buildFromTask(new LaunchableGradleTask(), projectIdentifier, task);
-                launchableGradleTask.setBuildTreePath(((TaskInternal) task).getIdentityPath().getPath());
-                return launchableGradleTask;
-            })
+            .map(task -> buildFromTask(new LaunchableGradleTask(), projectIdentifier, task))
             .collect(toList());
     }
 
@@ -115,8 +110,8 @@ public class BuildInvocationsBuilder implements ToolingModelBuilder {
             // replace the LaunchableGradleTaskSelector stored in the map iff we come across a task with the same name whose path has a smaller ordering
             // this way, for each task selector, its description will be the one from the selected task with the 'smallest' path
             if (!taskSelectors.containsKey(task.getName())) {
-                LaunchableGradleTaskSelector taskSelector = new LaunchableGradleTaskSelector().
-                    setDescription(task.getDescription()).setPath(task.getPath());
+                LaunchableGradleTaskSelector taskSelector = new LaunchableGradleTaskSelector()
+                    .setDescription(task.getDescription()).setPath(task.getPath());
                 taskSelectors.put(task.getName(), taskSelector);
             } else {
                 LaunchableGradleTaskSelector taskSelector = taskSelectors.get(task.getName());

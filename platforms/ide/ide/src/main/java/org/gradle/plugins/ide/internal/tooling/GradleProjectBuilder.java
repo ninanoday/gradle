@@ -31,7 +31,6 @@ import java.util.Objects;
 import static java.util.stream.Collectors.toList;
 import static org.gradle.api.internal.project.ProjectHierarchyUtils.getChildProjectsForInternalUse;
 import static org.gradle.plugins.ide.internal.tooling.ToolingModelBuilderSupport.buildFromTask;
-import static org.gradle.util.Path.SEPARATOR;
 
 /**
  * Builds the GradleProject that contains the project hierarchy and task information
@@ -100,18 +99,7 @@ public class GradleProjectBuilder implements ToolingModelBuilder {
 
     private static LaunchableGradleProjectTask buildTaskModel(DefaultGradleProject owner, Task task) {
         LaunchableGradleProjectTask model = buildFromTask(new LaunchableGradleProjectTask(), owner.getProjectIdentifier(), task);
-        model.setProject(owner)
-            .setBuildTreePath(getBuildTreePath(owner, task));
+        model.setProject(owner);
         return model;
     }
-
-    private static String getBuildTreePath(DefaultGradleProject owner, Task task) {
-        String ownerBuildTreePath = owner.getBuildTreePath();
-        String buildTreePath = SEPARATOR + task.getName();
-        if (SEPARATOR.equals(ownerBuildTreePath)) {
-            return buildTreePath;
-        }
-        return ownerBuildTreePath + buildTreePath;
-    }
-
 }
