@@ -360,4 +360,13 @@ public abstract class IdeaProject implements IdeWorkspace {
             xmlProject.addModulePath(reference.get().getFile());
         }
     }
+
+    // TODO: this is accidental public API, and a different solution must be found
+    public IdeaLanguageLevel getLanguageLevelInternal() {
+        return languageLevel;
+    }
+
+    public JavaVersion getTargetBytecodeVersionInternal() {
+        return targetBytecodeVersion;
+    }
 }

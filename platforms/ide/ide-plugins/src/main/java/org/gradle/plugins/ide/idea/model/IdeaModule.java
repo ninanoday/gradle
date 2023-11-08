@@ -668,4 +668,13 @@ public abstract class IdeaModule {
         return files.stream().map(file -> getPathFactory().path(file)).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    // TODO: this is accidental public API, and a different solution must be found
+    public IdeaLanguageLevel getLanguageLevelInternal() {
+        return languageLevel;
+    }
+
+    public JavaVersion getTargetBytecodeVersionInternal() {
+        return targetBytecodeVersion;
+    }
+
 }

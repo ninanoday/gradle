@@ -101,6 +101,9 @@ public abstract class IdeaPlugin extends IdePlugin {
             return p.getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
         }
     };
+
+    public static final JavaVersion FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION = JavaVersion.VERSION_1_6;
+
     private static final String IDEA_MODULE_TASK_NAME = "ideaModule";
     private static final String IDEA_PROJECT_TASK_NAME = "ideaProject";
     private static final String IDEA_WORKSPACE_TASK_NAME = "ideaWorkspace";
@@ -241,7 +244,7 @@ public abstract class IdeaPlugin extends IdePlugin {
     private JavaVersion getMaxJavaModuleCompatibilityVersionFor(Function<Project, JavaVersion> toJavaVersion) {
         List<Project> allJavaProjects = getAllJavaProjects();
         if (allJavaProjects.isEmpty()) {
-            return JavaVersion.VERSION_1_6;
+            return FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION;
         } else {
             return Collections.max(Lists.transform(allJavaProjects, toJavaVersion));
         }
