@@ -180,6 +180,9 @@ public class WriteDependencyVerificationFile implements DependencyVerificationOv
 
     @Override
     public void buildFinished(GradleInternal gradle) {
+        if (!gradle.isRootBuild()) {
+            return;
+        }
         ensureOutputDirCreated();
         maybeReadExistingFile();
         // when we generate the verification file, we intentionally ignore if the "use key servers" flag is false

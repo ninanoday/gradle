@@ -674,4 +674,42 @@ class DependencyVerificationSignatureWriteIntegTest extends AbstractSignatureVer
         keyringsAscii.size() == 1
         PGPUtils.getSize(keyringsAscii[0]) == 5
     }
+
+
+    @Issue(["https://github.com/gradle/gradle/issues/24822", "https://github.com/gradle/gradle/issues/26289"])
+    def "dry-run should export keys properly when buildSrc is present"() {
+        def keyring = newKeyRing()
+        createMetadataFile {
+            keyServer(keyServerFixture.uri)
+            addTrustedKey("org:foo:1.0.0", SigningFixtures.validPublicKeyHexString)
+        }
+
+        given:
+        javaLibrary()
+        uncheckedModule("org", "foo", "1.0") {
+            withSignature {
+                keyring.sign(it, [(SigningFixtures.validSecretKey): SigningFixtures.validPassword])
+            }
+        }
+        buildFile << """
+            dependencies {
+                implementation "org:foo:1.0"
+            }
+        """
+
+        file("buildSrc/build.gradle.kts").createFile()
+
+        when:
+        serveValidKey()
+        keyServerFixture.registerPublicKey(keyring.publicKey)
+
+        writeVerificationMetadata()
+        run(":help", "--export-keys")
+
+        then:
+        def exportedKeyRingAscii = file("gradle/verification-keyring.keys")
+        exportedKeyRingAscii.exists()
+        def keyringsAscii = SecuritySupport.loadKeyRingFile(exportedKeyRingAscii)
+        keyringsAscii.size() == 2
+    }
 }
