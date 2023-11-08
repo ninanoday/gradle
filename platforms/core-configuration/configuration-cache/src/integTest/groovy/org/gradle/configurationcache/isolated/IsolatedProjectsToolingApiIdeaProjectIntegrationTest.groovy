@@ -16,7 +16,7 @@
 
 package org.gradle.configurationcache.isolated
 
-import org.gradle.tooling.model.DomainObjectSet
+
 import org.gradle.tooling.model.idea.IdeaContentRoot
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaJavaLanguageSettings
@@ -25,8 +25,9 @@ import org.gradle.tooling.model.idea.IdeaModuleDependency
 import org.gradle.tooling.model.idea.IdeaProject
 import org.gradle.tooling.model.idea.IdeaSingleEntryLibraryDependency
 
-import java.util.function.BiConsumer
-import java.util.function.Function
+import static org.gradle.configurationcache.isolated.ToolingModelChecker.checkGradleProject
+import static org.gradle.configurationcache.isolated.ToolingModelChecker.checkModel
+import static org.gradle.configurationcache.isolated.ToolingModelChecker.checkProjectIdentifier
 
 class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsolatedProjectsToolingApiIntegrationTest {
 
@@ -42,31 +43,31 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
             include(":lib1:lib11")
         """
 
-        when:
+        when: "fetching without Isolated Projects"
         def expectedIdeaModel = fetchModel(IdeaProject)
 
         then:
         fixture.assertNoConfigurationCache()
-        expectedIdeaModel.children.size() > 0
-        expectedIdeaModel.children.every { it.children.isEmpty() } // IdeaModules are always flattened
+        expectedIdeaModel.modules.size() == 3
+        expectedIdeaModel.modules.every { it.children.isEmpty() } // IdeaModules are always flattened
 
-        when:
+        when: "fetching with Isolated Projects"
         executer.withArguments(ENABLE_CLI)
         def ideaModel = fetchModel(IdeaProject)
 
         then:
         fixture.assertStateStored {
-            // IdeaProject, GradleProject, IsolatedGradleProject
-            modelsCreated(":", 4)
-            // IsolatedGradleProject, IsolatedIdeaModule
+            // IdeaProject, intermediate IsolatedGradleProjectInternal, IsolatedIdeaModuleInternal
+            modelsCreated(":", 3)
+            // intermediate IsolatedGradleProject, IsolatedIdeaModule
             modelsCreated(":lib1", 2)
             modelsCreated(":lib1:lib11", 2)
         }
 
         then:
-        assertIdeaProject(ideaModel, expectedIdeaModel)
+        checkIdeaProject(ideaModel, expectedIdeaModel)
 
-        when:
+        when: "fetching again with Isolated Projects"
         executer.withArguments(ENABLE_CLI)
         fetchModel(IdeaProject)
 
@@ -74,59 +75,54 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         fixture.assertStateLoaded()
     }
 
-    private void assertIdeaProject(IdeaProject actual, IdeaProject expected) {
-        assertProperties(actual, expected, [
+    private void checkIdeaProject(IdeaProject actual, IdeaProject expected) {
+        checkModel(actual, expected, [
             { it.parent },
             { it.name },
             { it.description },
             { it.jdkName },
             { it.languageLevel.level },
+            [{ it.children }, { a, e -> checkIdeaModule(a, e) }],
         ])
-
-        assertLanguageSettings(actual.javaLanguageSettings, expected.javaLanguageSettings)
-
-        assertMany(actual.children, expected.children, this::assertIdeaModule)
     }
 
-    private void assertIdeaModule(IdeaModule actualModule, IdeaModule expectedModule) {
-        assertProperties(actualModule, expectedModule, [
+    private void checkIdeaModule(IdeaModule actualModule, IdeaModule expectedModule) {
+        checkModel(actualModule, expectedModule, [
             { it.name },
-            { it.projectIdentifier.projectPath },
-            { it.projectIdentifier.buildIdentifier.rootDir },
+            [{ it.projectIdentifier }, { a, e -> checkProjectIdentifier(a, e) }],
+            [{ it.javaLanguageSettings }, { a, e -> checkLanguageSettings(a, e) }],
             { it.jdkName },
-            { it.gradleProject.path },
-            { it.project.languageLevel.level },
+            [{ it.contentRoots }, { a, e -> checkContentRoot(a, e) }],
+            [{ it.gradleProject }, { a, e -> checkGradleProject(a, e) }],
+            { it.project.languageLevel.level }, // shallow check to avoid infinite recursion
             { it.compilerOutput.inheritOutputDirs },
             { it.compilerOutput.outputDir },
             { it.compilerOutput.testOutputDir },
+            [{ it.dependencies }, { a, e -> checkDependency(a, e) }],
         ])
-
-        assertLanguageSettings(actualModule.javaLanguageSettings, expectedModule.javaLanguageSettings)
-        assertMany(actualModule.contentRoots, expectedModule.contentRoots, this::assertContentRoot)
-        assertMany(actualModule.dependencies, expectedModule.dependencies, this::assertDependency)
     }
 
-    private void assertContentRoot(IdeaContentRoot actual, IdeaContentRoot expected) {
-        assertProperties(actual, expected, [
+    private void checkContentRoot(IdeaContentRoot actual, IdeaContentRoot expected) {
+        checkModel(actual, expected, [
             { it.rootDirectory },
             { it.excludeDirectories },
         ])
     }
 
-    private void assertDependency(IdeaDependency actual, IdeaDependency expected) {
-        assertProperties(actual, expected, [
+    private void checkDependency(IdeaDependency actual, IdeaDependency expected) {
+        checkModel(actual, expected, [
             { it.scope.scope },
             { it.exported },
         ])
 
         if (expected instanceof IdeaModuleDependency) {
-            assertProperties(actual, expected, [
+            checkModel(actual, expected, [
                 { it.targetModuleName },
             ])
         }
 
         if (expected instanceof IdeaSingleEntryLibraryDependency) {
-            assertProperties(actual, expected, [
+            checkModel(actual, expected, [
                 { it.file },
                 { it.source },
                 { it.javadoc },
@@ -135,33 +131,12 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         }
     }
 
-    private void assertLanguageSettings(IdeaJavaLanguageSettings actual, IdeaJavaLanguageSettings expected) {
-        assertProperties(actual, expected, [
+    private void checkLanguageSettings(IdeaJavaLanguageSettings actual, IdeaJavaLanguageSettings expected) {
+        checkModel(actual, expected, [
             { it.languageLevel },
             { it.targetBytecodeVersion },
             { it.jdk?.javaVersion },
             { it.jdk?.javaHome },
         ])
     }
-
-    private static <T> void assertMany(DomainObjectSet<T> actual, DomainObjectSet<T> expected, BiConsumer<T, T> assertion) {
-        actual.size() == expected.size()
-        [actual, expected].collect { it.all }
-            .transpose()
-            .each { actualItem, expectedItem ->
-                assertion(actualItem, expectedItem)
-            }
-    }
-
-    private static <T> void assertProperties(T actual, T expected, List<Function<T, ?>> properties) {
-        assert (actual == null) == (expected == null)
-        if (expected == null) {
-            return
-        }
-
-        for (def prop in properties) {
-            assert prop(actual) == prop(expected)
-        }
-    }
-
 }
