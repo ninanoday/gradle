@@ -58,8 +58,9 @@ public interface ProblemBuilder {
      * Specifies arbitrary data associated with this problem.
      *
      * @return this
+     * @since 8.6
      */
-    ProblemBuilder additionalData(String key, String value);
+    ProblemBuilder additionalData(String key, Object value);
 
     /**
      * The exception causing this problem.
