@@ -30,7 +30,7 @@ import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaModule;
 import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaProject;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.plugins.ide.internal.tooling.model.DefaultGradleProject;
-import org.gradle.plugins.ide.internal.tooling.model.DefaultIsolatedIdeaModule;
+import org.gradle.plugins.ide.internal.tooling.model.IsolatedIdeaModuleInternal;
 import org.gradle.tooling.provider.model.internal.IntermediateToolingModelProvider;
 
 import javax.annotation.Nullable;
@@ -67,23 +67,23 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
 
     @Override
     public DefaultIdeaProject buildForRoot(Project project, boolean offlineDependencyResolution) {
-        // TODO: SUPPORT THE CASE WHEN TARGET IS NOT ROOT PROJECT
+        // TODO: support the case when target is not root project
         Project root = project.getRootProject();
-        // TODO: DO WE NEED TO APPLY THE IDEA PLUGIN TO ALL INCLUDED BUILDS? (VANILLA BUILDER DOES IT)
+        // TODO: do we need to apply the idea plugin to all included builds? (vanilla builder does it)
         DefaultGradleProject rootGradleProject = gradleProjectBuilder.buildRoot(project);
-        // TODO: SUPPORT OFFLINE DEPENDENCY RESOLUTION
-        return buildRoot(root, rootGradleProject);
+        IsolatedIdeaModuleParameter parameter = createParameter(offlineDependencyResolution);
+        return buildRoot(root, rootGradleProject, parameter);
     }
 
-    private DefaultIdeaProject buildRoot(Project rootProject, DefaultGradleProject rootGradleProject) {
-        // We have to apply the plugin to the root, because users might have done it themselves, and overriden some settings via the extension
+    private DefaultIdeaProject buildRoot(Project rootProject, DefaultGradleProject rootGradleProject, IsolatedIdeaModuleParameter parameter) {
+        // We have to apply the plugin to the root, because users might have done it themselves, and overridden some settings via the extension
         // This means, the plugin has to be made CC and IP compatible, at least for the root
         rootProject.getPluginManager().apply(IdeaPlugin.class);
         IdeaModel ideaModelExt = rootProject.getPlugins().getPlugin(IdeaPlugin.class).getModel();
         IdeaProject ideaProjectExt = ideaModelExt.getProject();
 
         List<Project> allProjects = new ArrayList<>(rootProject.getAllprojects());
-        List<DefaultIsolatedIdeaModule> allIsolatedIdeaModules = getIsolatedIdeaModules(allProjects);
+        List<IsolatedIdeaModuleInternal> allIsolatedIdeaModules = getIsolatedIdeaModules(allProjects, parameter);
 
         IdeaLanguageLevel languageLevel = resolveRootLanguageLevel(ideaProjectExt, allIsolatedIdeaModules);
         JavaVersion targetBytecodeVersion = resolveRootTargetBytecodeVersion(ideaProjectExt, allIsolatedIdeaModules);
@@ -104,48 +104,52 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
     }
 
     // Simulates computation of the language level property *for the root project* in the IdeaPlugin
-    private static IdeaLanguageLevel resolveRootLanguageLevel(IdeaProject ideaProjectExt, List<DefaultIsolatedIdeaModule> isolatedModules) {
+    private static IdeaLanguageLevel resolveRootLanguageLevel(IdeaProject ideaProjectExt, List<IsolatedIdeaModuleInternal> isolatedModules) {
         IdeaLanguageLevel explicitLanguageLevel = ideaProjectExt.getLanguageLevelInternal();
         if (explicitLanguageLevel != null) {
             return explicitLanguageLevel;
         }
 
-        JavaVersion maxCompatibility = getMaxCompatibility(isolatedModules, DefaultIsolatedIdeaModule::getJavaSourceCompatibility);
+        JavaVersion maxCompatibility = getMaxCompatibility(isolatedModules, IsolatedIdeaModuleInternal::getJavaSourceCompatibility);
         return new IdeaLanguageLevel(maxCompatibility);
     }
 
     // Simulates computation of the target bytecode version property *for the root project* in the IdeaPlugin
-    private static JavaVersion resolveRootTargetBytecodeVersion(IdeaProject ideaProjectExt, List<DefaultIsolatedIdeaModule> isolatedModules) {
+    private static JavaVersion resolveRootTargetBytecodeVersion(IdeaProject ideaProjectExt, List<IsolatedIdeaModuleInternal> isolatedModules) {
         JavaVersion explicitTargetBytecodeVersion = ideaProjectExt.getTargetBytecodeVersionInternal();
         if (explicitTargetBytecodeVersion != null) {
             return explicitTargetBytecodeVersion;
         }
 
-        return getMaxCompatibility(isolatedModules, DefaultIsolatedIdeaModule::getJavaTargetCompatibility);
+        return getMaxCompatibility(isolatedModules, IsolatedIdeaModuleInternal::getJavaTargetCompatibility);
     }
 
-    private List<DefaultIsolatedIdeaModule> getIsolatedIdeaModules(List<Project> allProjects) {
+    private List<IsolatedIdeaModuleInternal> getIsolatedIdeaModules(List<Project> allProjects, IsolatedIdeaModuleParameter parameter) {
         return intermediateToolingModelProvider
-            .getModels(allProjects, "org.gradle.tooling.model.internal.idea.IsolatedIdeaModule", DefaultIsolatedIdeaModule.class);
+            .getModels(allProjects, IsolatedIdeaModuleInternal.class, parameter);
     }
 
     private static List<DefaultIdeaModule> createIdeaModules(
         DefaultIdeaProject parent,
         IdeaModuleBuilder ideaModuleBuilder,
         List<Project> projects,
-        List<DefaultIsolatedIdeaModule> isolatedIdeaModules
+        List<IsolatedIdeaModuleInternal> isolatedIdeaModules
     ) {
         return Streams.zip(projects.stream(), isolatedIdeaModules.stream(), ideaModuleBuilder::buildWithoutParent)
             .map(it -> it.setParent(parent))
             .collect(Collectors.toList());
     }
 
-    private static JavaVersion getMaxCompatibility(List<DefaultIsolatedIdeaModule> isolatedIdeaModules, Function<DefaultIsolatedIdeaModule, JavaVersion> getCompatibilty) {
+    private static JavaVersion getMaxCompatibility(List<IsolatedIdeaModuleInternal> isolatedIdeaModules, Function<IsolatedIdeaModuleInternal, JavaVersion> getCompatibilty) {
         return isolatedIdeaModules.stream()
             .map(getCompatibilty)
             .filter(Objects::nonNull)
             .max(JavaVersion::compareTo)
             .orElse(IdeaPlugin.FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION);
+    }
+
+    private static IsolatedIdeaModuleParameter createParameter(boolean offlineDependencyResolution) {
+        return () -> offlineDependencyResolution;
     }
 
     private static class IdeaModuleBuilder {
@@ -164,7 +168,7 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
             this.ideaProjectTargetBytecodeVersion = ideaProjectTargetBytecodeVersion;
         }
 
-        private DefaultIdeaModule buildWithoutParent(Project project, DefaultIsolatedIdeaModule isolatedIdeaModule) {
+        private DefaultIdeaModule buildWithoutParent(Project project, IsolatedIdeaModuleInternal isolatedIdeaModule) {
             DefaultIdeaModule model = new DefaultIdeaModule()
                 .setName(isolatedIdeaModule.getName())
                 .setGradleProject(rootGradleProject.findByPath(project.getPath()))
@@ -189,13 +193,13 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
             return model;
         }
 
-        private static @Nullable JavaVersion resolveTargetBytecodeVersion(DefaultIsolatedIdeaModule isolatedIdeaModule) {
+        private static @Nullable JavaVersion resolveTargetBytecodeVersion(IsolatedIdeaModuleInternal isolatedIdeaModule) {
             JavaVersion targetBytecodeVersionConvention = isolatedIdeaModule.getJavaTargetCompatibility();
             JavaVersion explicitTargetBytecodeVersion = isolatedIdeaModule.getExplicitTargetBytecodeVersion();
             return getPropertyValue(explicitTargetBytecodeVersion, targetBytecodeVersionConvention);
         }
 
-        private static IdeaLanguageLevel resolveLanguageLevel(DefaultIsolatedIdeaModule isolatedIdeaModule) {
+        private static IdeaLanguageLevel resolveLanguageLevel(IsolatedIdeaModuleInternal isolatedIdeaModule) {
             JavaVersion languageLevelConvention = isolatedIdeaModule.getJavaSourceCompatibility();
             IdeaLanguageLevel explicitLanguageLevel = isolatedIdeaModule.getExplicitSourceLanguageLevel();
             return getPropertyValue(explicitLanguageLevel, new IdeaLanguageLevel(languageLevelConvention));

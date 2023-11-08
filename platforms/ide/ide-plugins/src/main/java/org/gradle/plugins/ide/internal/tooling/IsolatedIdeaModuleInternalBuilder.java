@@ -25,40 +25,47 @@ import org.gradle.plugins.ide.idea.IdeaPlugin;
 import org.gradle.plugins.ide.idea.model.Dependency;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.plugins.ide.idea.model.IdeaModule;
-import org.gradle.plugins.ide.internal.tooling.model.DefaultIsolatedIdeaModule;
-import org.gradle.tooling.model.internal.idea.IsolatedIdeaModule;
-import org.gradle.tooling.provider.model.ToolingModelBuilder;
+import org.gradle.plugins.ide.internal.tooling.model.IsolatedIdeaModuleInternal;
+import org.gradle.tooling.provider.model.ParameterizedToolingModelBuilder;
 
 import java.util.Set;
 
 /**
- * Builds the {@link IsolatedIdeaModule} that contains information about a project and its tasks.
+ * Builds the {@link IsolatedIdeaModuleInternal} model that contains information about a project and its tasks.
  */
 @NonNullApi
-public class IsolatedIdeaModuleBuilder implements ToolingModelBuilder {
+public class IsolatedIdeaModuleInternalBuilder implements ParameterizedToolingModelBuilder<IsolatedIdeaModuleParameter> {
+
+    @Override
+    public Class<IsolatedIdeaModuleParameter> getParameterType() {
+        return IsolatedIdeaModuleParameter.class;
+    }
 
     @Override
     public boolean canBuild(String modelName) {
-        return modelName.equals("org.gradle.tooling.model.internal.idea.IsolatedIdeaModule");
+        return modelName.equals(IsolatedIdeaModuleInternal.class.getName());
     }
 
     @Override
-    public DefaultIsolatedIdeaModule buildAll(String modelName, Project project) {
-        return build(project);
+    public IsolatedIdeaModuleInternal buildAll(String modelName, IsolatedIdeaModuleParameter parameter, Project project) {
+        return build(project, parameter.getOfflineDependencyResolution());
     }
 
-    private static DefaultIsolatedIdeaModule build(Project project) {
+    @Override
+    public IsolatedIdeaModuleInternal buildAll(String modelName, Project project) {
+        return build(project, false);
+    }
+
+    private static IsolatedIdeaModuleInternal build(Project project, boolean offlineDependencyResolution) {
         project.getPluginManager().apply(IdeaPlugin.class);
 
         IdeaModel ideaModelExt = project.getExtensions().getByType(IdeaModel.class);
         IdeaModule ideaModuleExt = ideaModelExt.getModule();
 
-        // TODO: SUPPORT OFFLINE DEPENDENCY RESOLUTION
-        boolean offlineDependencyResolution = false;
         ideaModuleExt.setOffline(offlineDependencyResolution);
         Set<Dependency> resolvedDependencies = ideaModuleExt.resolveDependencies();
 
-        DefaultIsolatedIdeaModule model = new DefaultIsolatedIdeaModule();
+        IsolatedIdeaModuleInternal model = new IsolatedIdeaModuleInternal();
 
         model.setName(ideaModuleExt.getName());
         model.setJdkName(ideaModuleExt.getJdkName());

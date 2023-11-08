@@ -28,8 +28,13 @@ import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Represents an IDEA module in isolation.
+ * <p>
+ * <b>This model is internal, and is NOT part of the public Tooling API.</b>
+ */
 @NonNullApi
-public class DefaultIsolatedIdeaModule implements Serializable {
+public class IsolatedIdeaModuleInternal implements Serializable {
 
     private String name;
     private @Nullable JavaVersion javaSourceCompatibility;
@@ -42,7 +47,7 @@ public class DefaultIsolatedIdeaModule implements Serializable {
     private List<DefaultIdeaDependency> dependencies = new LinkedList<>();
 
     public String toString() {
-        return "IsolatedIdeaModule{"
+        return "IsolatedIdeaModuleInternal{"
             + "name='" + name + '\''
             + '}';
     }

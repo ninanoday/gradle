@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-package org.gradle.tooling.model.internal.idea;
+package org.gradle.plugins.ide.internal.tooling;
 
-import org.gradle.tooling.model.Element;
+import org.gradle.api.NonNullApi;
 
-/**
- * Represents an IDEA module, isolated from the hierarchy.
- * <p>
- * <b>This model is internal, and is NOT part of the public Tooling API.</b>
- */
-public interface IsolatedIdeaModule extends Element {
+@NonNullApi
+public interface IsolatedIdeaModuleParameter {
 
-    // TODO: possibly drop the interface
+    boolean getOfflineDependencyResolution();
 
 }
