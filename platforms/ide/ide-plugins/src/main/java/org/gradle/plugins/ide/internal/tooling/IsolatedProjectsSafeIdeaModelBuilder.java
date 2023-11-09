@@ -71,7 +71,7 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
         // TODO: support the case when target is not root project
         Project root = project.getRootProject();
         // TODO: do we need to apply the idea plugin to all included builds? (vanilla builder does it)
-        DefaultGradleProject rootGradleProject = gradleProjectBuilder.buildRoot(project);
+        DefaultGradleProject rootGradleProject = gradleProjectBuilder.buildForRoot(project);
         IsolatedIdeaModuleParameter parameter = createParameter(offlineDependencyResolution);
         return buildRoot(root, rootGradleProject, parameter);
     }
