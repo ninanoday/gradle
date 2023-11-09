@@ -17,6 +17,7 @@
 package org.gradle.configurationcache.isolated
 
 import org.gradle.api.JavaVersion
+import org.gradle.tooling.model.idea.BasicIdeaProject
 import org.gradle.tooling.model.idea.IdeaContentRoot
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaJavaLanguageSettings
@@ -30,8 +31,6 @@ import static org.gradle.configurationcache.isolated.ToolingModelChecker.checkMo
 import static org.gradle.configurationcache.isolated.ToolingModelChecker.checkProjectIdentifier
 
 class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsolatedProjectsToolingApiIntegrationTest {
-
-    // TODO: add test for BasicIdeaProject
 
     def "can fetch IdeaProject model for root and re-fetch cached"() {
         settingsFile << """
@@ -54,6 +53,32 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         when:
         executer.withArguments(ENABLE_CLI)
         fetchModel(IdeaProject)
+
+        then:
+        fixture.assertStateLoaded()
+    }
+
+    def "can fetch BasicIdeaProject model for root and re-fetch cached"() {
+        settingsFile << """
+            rootProject.name = 'root'
+        """
+
+        when:
+        executer.withArguments(ENABLE_CLI)
+        def ideaModel = fetchModel(BasicIdeaProject)
+
+        then:
+        fixture.assertStateStored {
+            // BasicIdeaProject, intermediate IsolatedGradleProjectInternal, IsolatedIdeaModuleInternal
+            modelsCreated(":", 3)
+        }
+
+        then:
+        ideaModel.name == "root"
+
+        when:
+        executer.withArguments(ENABLE_CLI)
+        fetchModel(BasicIdeaProject)
 
         then:
         fixture.assertStateLoaded()
@@ -187,7 +212,60 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         checkIdeaProject(ideaModel, expectedIdeaModel)
     }
 
-    private void checkIdeaProject(IdeaProject actual, IdeaProject expected) {
+    def "can fetch BasicIdeaProject model without resolving external dependencies"() {
+        settingsFile << """
+            rootProject.name = 'root'
+            include(":api")
+            include(":impl")
+        """
+
+        file("api/build.gradle") << """
+            plugins {
+                id 'java'
+            }
+        """
+
+        file("impl/build.gradle") << """
+            plugins {
+                id 'java'
+                id 'idea'
+            }
+
+            dependencies {
+                implementation(project(":api"))
+                testImplementation("i.dont:Exist:2.4")
+            }
+        """
+
+        when: "fetching without Isolated Projects"
+        def expectedIdeaModel = fetchModel(BasicIdeaProject)
+
+        then:
+        fixture.assertNoConfigurationCache()
+        with(expectedIdeaModel.children.find { it.name == "impl" }) { impl ->
+            impl.dependencies.size() == 1
+            def apiDep = impl.dependencies[0] as IdeaModuleDependency
+            apiDep.targetModuleName == "api"
+        }
+
+        when: "fetching with Isolated Projects"
+        executer.withArguments(ENABLE_CLI)
+        def ideaModel = fetchModel(BasicIdeaProject)
+
+        then:
+        fixture.assertStateStored {
+            // BasicIdeaProject, intermediate IsolatedGradleProjectInternal, IsolatedIdeaModuleInternal
+            modelsCreated(":", 3)
+            // intermediate IsolatedGradleProject, IsolatedIdeaModule
+            modelsCreated(":api", 2)
+            modelsCreated(":impl", 2)
+        }
+
+        then:
+        checkIdeaProject(ideaModel, expectedIdeaModel)
+    }
+
+    private static void checkIdeaProject(IdeaProject actual, IdeaProject expected) {
         checkModel(actual, expected, [
             { it.parent },
             { it.name },
@@ -198,7 +276,7 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         ])
     }
 
-    private void checkIdeaModule(IdeaModule actualModule, IdeaModule expectedModule) {
+    private static void checkIdeaModule(IdeaModule actualModule, IdeaModule expectedModule) {
         checkModel(actualModule, expectedModule, [
             { it.name },
             [{ it.projectIdentifier }, { a, e -> checkProjectIdentifier(a, e) }],
@@ -214,14 +292,14 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         ])
     }
 
-    private void checkContentRoot(IdeaContentRoot actual, IdeaContentRoot expected) {
+    private static void checkContentRoot(IdeaContentRoot actual, IdeaContentRoot expected) {
         checkModel(actual, expected, [
             { it.rootDirectory },
             { it.excludeDirectories },
         ])
     }
 
-    private void checkDependency(IdeaDependency actual, IdeaDependency expected) {
+    private static void checkDependency(IdeaDependency actual, IdeaDependency expected) {
         checkModel(actual, expected, [
             { it.scope.scope },
             { it.exported },
@@ -243,7 +321,7 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
         }
     }
 
-    private void checkLanguageSettings(IdeaJavaLanguageSettings actual, IdeaJavaLanguageSettings expected) {
+    private static void checkLanguageSettings(IdeaJavaLanguageSettings actual, IdeaJavaLanguageSettings expected) {
         checkModel(actual, expected, [
             { it.languageLevel },
             { it.targetBytecodeVersion },
