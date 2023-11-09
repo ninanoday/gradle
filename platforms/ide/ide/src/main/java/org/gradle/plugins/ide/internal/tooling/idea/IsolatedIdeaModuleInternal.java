@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package org.gradle.plugins.ide.internal.tooling.model;
+package org.gradle.plugins.ide.internal.tooling.idea;
 
 import com.google.common.collect.ImmutableList;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.NonNullApi;
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel;
-import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaCompilerOutput;
-import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaContentRoot;
-import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaDependency;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -48,7 +45,7 @@ public class IsolatedIdeaModuleInternal implements Serializable {
 
     public String toString() {
         return "IsolatedIdeaModuleInternal{"
-            + "name='" + name + '\''
+            + "contentRoot='" + contentRoot.getRootDirectory() + '\''
             + '}';
     }
 

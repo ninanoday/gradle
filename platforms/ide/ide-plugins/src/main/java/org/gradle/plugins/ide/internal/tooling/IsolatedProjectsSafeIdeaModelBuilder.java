@@ -31,7 +31,7 @@ import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaModule;
 import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaProject;
 import org.gradle.plugins.ide.internal.tooling.java.DefaultInstalledJdk;
 import org.gradle.plugins.ide.internal.tooling.model.DefaultGradleProject;
-import org.gradle.plugins.ide.internal.tooling.model.IsolatedIdeaModuleInternal;
+import org.gradle.plugins.ide.internal.tooling.idea.IsolatedIdeaModuleInternal;
 import org.gradle.tooling.provider.model.internal.IntermediateToolingModelProvider;
 
 import javax.annotation.Nullable;

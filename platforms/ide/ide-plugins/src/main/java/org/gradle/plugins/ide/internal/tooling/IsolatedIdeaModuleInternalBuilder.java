@@ -25,7 +25,7 @@ import org.gradle.plugins.ide.idea.IdeaPlugin;
 import org.gradle.plugins.ide.idea.internal.IdeaModuleInternal;
 import org.gradle.plugins.ide.idea.model.Dependency;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.plugins.ide.internal.tooling.model.IsolatedIdeaModuleInternal;
+import org.gradle.plugins.ide.internal.tooling.idea.IsolatedIdeaModuleInternal;
 import org.gradle.tooling.provider.model.ParameterizedToolingModelBuilder;
 
 import java.util.Set;
