@@ -33,7 +33,31 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
 
     // TODO: add test for BasicIdeaProject
 
-    // TODO: write a couple of tests with different project setups to make sure the isolated Idea model matches the non-isolated one
+    def "can fetch IdeaProject model for root and re-fetch cached"() {
+        settingsFile << """
+            rootProject.name = 'root'
+        """
+
+        when:
+        executer.withArguments(ENABLE_CLI)
+        def ideaModel = fetchModel(IdeaProject)
+
+        then:
+        fixture.assertStateStored {
+            // IdeaProject, intermediate IsolatedGradleProjectInternal, IsolatedIdeaModuleInternal
+            modelsCreated(":", 3)
+        }
+
+        then:
+        ideaModel.name == "root"
+
+        when:
+        executer.withArguments(ENABLE_CLI)
+        fetchModel(IdeaProject)
+
+        then:
+        fixture.assertStateLoaded()
+    }
 
     def "can fetch IdeaProject model for empty projects"() {
         settingsFile << """
@@ -65,13 +89,6 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
 
         then:
         checkIdeaProject(ideaModel, expectedIdeaModel)
-
-        when: "fetching again with Isolated Projects"
-        executer.withArguments(ENABLE_CLI)
-        fetchModel(IdeaProject)
-
-        then:
-        fixture.assertStateLoaded()
     }
 
     def "can fetch IdeaProject model for java projects"() {
@@ -111,13 +128,63 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
 
         then:
         checkIdeaProject(ideaModel, expectedIdeaModel)
+    }
 
-        when: "fetching again with Isolated Projects"
-        executer.withArguments(ENABLE_CLI)
-        fetchModel(IdeaProject)
+    def "can fetch IdeaProject model for projects with java and idea plugins"() {
+        settingsFile << """
+            rootProject.name = 'root'
+            include(":lib1")
+            include(":lib2")
+        """
+
+        file("lib1/build.gradle") << """
+            import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel
+            plugins {
+                id 'java'
+                id 'idea'
+            }
+            idea.module.languageLevel = new IdeaLanguageLevel(7)
+            idea.module.targetBytecodeVersion = JavaVersion.VERSION_1_7
+            java.targetCompatibility = JavaVersion.VERSION_1_8
+            java.sourceCompatibility = JavaVersion.VERSION_1_8
+        """
+
+        file("lib2/build.gradle") << """
+            import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel
+            plugins {
+                id 'idea'
+            }
+            idea.module.languageLevel = new IdeaLanguageLevel(21)
+            idea.module.targetBytecodeVersion = JavaVersion.VERSION_21
+        """
+
+        when: "fetching without Isolated Projects"
+        def expectedIdeaModel = fetchModel(IdeaProject)
 
         then:
-        fixture.assertStateLoaded()
+        fixture.assertNoConfigurationCache()
+        expectedIdeaModel.javaLanguageSettings.languageLevel == JavaVersion.VERSION_1_8
+        expectedIdeaModel.javaLanguageSettings.targetBytecodeVersion == JavaVersion.VERSION_1_8
+        expectedIdeaModel.modules.name == ["root", "lib1", "lib2"]
+        expectedIdeaModel.modules[1].javaLanguageSettings.languageLevel == JavaVersion.VERSION_1_7
+        expectedIdeaModel.modules[1].javaLanguageSettings.targetBytecodeVersion == JavaVersion.VERSION_1_7
+        expectedIdeaModel.modules[2].javaLanguageSettings == null
+
+        when: "fetching with Isolated Projects"
+        executer.withArguments(ENABLE_CLI)
+        def ideaModel = fetchModel(IdeaProject)
+
+        then:
+        fixture.assertStateStored {
+            // IdeaProject, intermediate IsolatedGradleProjectInternal, IsolatedIdeaModuleInternal
+            modelsCreated(":", 3)
+            // intermediate IsolatedGradleProject, IsolatedIdeaModule
+            modelsCreated(":lib1", 2)
+            modelsCreated(":lib2", 2)
+        }
+
+        then:
+        checkIdeaProject(ideaModel, expectedIdeaModel)
     }
 
     private void checkIdeaProject(IdeaProject actual, IdeaProject expected) {
