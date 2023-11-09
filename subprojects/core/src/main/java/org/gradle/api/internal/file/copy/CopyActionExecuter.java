@@ -39,8 +39,8 @@ public class CopyActionExecuter {
 
     public WorkResult execute(final CopySpecInternal spec, CopyAction action) {
         final CopyAction effectiveVisitor = new DuplicateHandlingCopyActionDecorator(
-                new NormalizingCopyActionDecorator(action, fileSystem),
-                documentationRegistry
+            new NormalizingCopyActionDecorator(spec, action, fileSystem),
+            documentationRegistry
         );
 
         CopyActionProcessingStream processingStream = new CopySpecBackedCopyActionProcessingStream(spec, instantiator, objectFactory, fileSystem, reproducibleFileOrder);

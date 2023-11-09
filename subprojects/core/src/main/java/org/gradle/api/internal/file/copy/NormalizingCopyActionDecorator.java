@@ -29,8 +29,10 @@ import org.gradle.api.file.RelativePath;
 import org.gradle.api.file.SymbolicLinkDetails;
 import org.gradle.api.internal.file.AbstractFileTreeElement;
 import org.gradle.api.internal.file.CopyActionProcessingStreamAction;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.WorkResult;
 import org.gradle.internal.file.Chmod;
+import org.gradle.util.internal.GFileUtils;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -51,10 +53,12 @@ public class NormalizingCopyActionDecorator implements CopyAction {
 
     private final CopyAction delegate;
     private final Chmod chmod;
+    private final CopySpecInternal spec;
 
-    public NormalizingCopyActionDecorator(CopyAction delegate, Chmod chmod) {
+    public NormalizingCopyActionDecorator(final CopySpecInternal spec, CopyAction delegate, Chmod chmod) {
         this.delegate = delegate;
         this.chmod = chmod;
+        this.spec = spec;
     }
 
     @Override
@@ -99,7 +103,7 @@ public class NormalizingCopyActionDecorator implements CopyAction {
         FileCopyDetailsInternal dir;
         if (detailsForPath.isEmpty()) {
             // TODO - this is pretty nasty, look at avoiding using a time bomb stub here
-            dir = new ParentDirectoryStub(path, includeEmptyDirs, chmod);
+            dir = new ParentDirectoryStub(spec.buildRootResolver(), path, chmod);
         } else {
             dir = detailsForPath.get(0);
         }
@@ -108,18 +112,19 @@ public class NormalizingCopyActionDecorator implements CopyAction {
 
     private static class ParentDirectoryStub extends AbstractFileTreeElement implements FileCopyDetailsInternal {
         private final RelativePath path;
-        private final boolean includeEmptyDirs;
-        private long lastModified = System.currentTimeMillis();
+        private final long lastModified = System.currentTimeMillis();
 
-        private ParentDirectoryStub(RelativePath path, boolean includeEmptyDirs, Chmod chmod) {
+        private final CopySpecResolver specResolver;
+
+        private ParentDirectoryStub(CopySpecResolver specResolver, RelativePath path, Chmod chmod) {
             super(chmod);
             this.path = path;
-            this.includeEmptyDirs = includeEmptyDirs;
+            this.specResolver = specResolver;
         }
 
         @Override
         public boolean isIncludeEmptyDirs() {
-            return includeEmptyDirs;
+            return specResolver.getIncludeEmptyDirs();
         }
 
         @Override
@@ -134,7 +139,7 @@ public class NormalizingCopyActionDecorator implements CopyAction {
 
         @Override
         public boolean isDirectory() {
-            return !path.isFile();
+            return true;
         }
 
         @Override
@@ -161,6 +166,27 @@ public class NormalizingCopyActionDecorator implements CopyAction {
         @Override
         public SymbolicLinkDetails getSymbolicLinkDetails() {
             return null; //this is not a symlink because it was traversed from below
+        }
+
+        @Override
+        public boolean copyTo(File target) {
+            try {
+                GFileUtils.mkdirs(target);
+                getChmod().chmod(target, getPermissions().toUnixNumeric());
+                return true;
+            } catch (Exception e) {
+                throw new CopyFileElementException(String.format("Could not copy %s to '%s'.", getDisplayName(), target), e);
+            }
+        }
+
+        @Override
+        public FilePermissions getPermissions() {
+            Provider<FilePermissions> specMode = specResolver.getImmutableDirPermissions();
+            if (specMode.isPresent()) {
+                return specMode.get();
+            }
+
+            return super.getPermissions();
         }
 
         @Override
