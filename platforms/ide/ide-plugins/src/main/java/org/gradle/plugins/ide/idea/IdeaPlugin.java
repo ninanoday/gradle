@@ -50,6 +50,7 @@ import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.xml.XmlTransformer;
 import org.gradle.plugins.ide.api.XmlFileContentMerger;
 import org.gradle.plugins.ide.idea.internal.IdeaModuleMetadata;
+import org.gradle.plugins.ide.idea.internal.IdeaModuleSupport;
 import org.gradle.plugins.ide.idea.internal.IdeaScalaConfigurer;
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -101,8 +102,6 @@ public abstract class IdeaPlugin extends IdePlugin {
             return p.getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
         }
     };
-
-    public static final JavaVersion FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION = JavaVersion.VERSION_1_6;
 
     private static final String IDEA_MODULE_TASK_NAME = "ideaModule";
     private static final String IDEA_PROJECT_TASK_NAME = "ideaProject";
@@ -244,7 +243,7 @@ public abstract class IdeaPlugin extends IdePlugin {
     private JavaVersion getMaxJavaModuleCompatibilityVersionFor(Function<Project, JavaVersion> toJavaVersion) {
         List<Project> allJavaProjects = getAllJavaProjects();
         if (allJavaProjects.isEmpty()) {
-            return FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION;
+            return IdeaModuleSupport.FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION;
         } else {
             return Collections.max(Lists.transform(allJavaProjects, toJavaVersion));
         }

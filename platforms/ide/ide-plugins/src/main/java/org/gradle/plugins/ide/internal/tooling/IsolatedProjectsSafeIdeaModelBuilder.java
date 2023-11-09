@@ -21,6 +21,7 @@ import org.gradle.api.JavaVersion;
 import org.gradle.api.NonNullApi;
 import org.gradle.api.Project;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
+import org.gradle.plugins.ide.idea.internal.IdeaModuleSupport;
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.plugins.ide.idea.model.IdeaProject;
@@ -145,7 +146,7 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
             .map(getCompatibilty)
             .filter(Objects::nonNull)
             .max(JavaVersion::compareTo)
-            .orElse(IdeaPlugin.FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION);
+            .orElse(IdeaModuleSupport.FALLBACK_MODULE_JAVA_COMPATIBILITY_VERSION);
     }
 
     private static IsolatedIdeaModuleParameter createParameter(boolean offlineDependencyResolution) {
