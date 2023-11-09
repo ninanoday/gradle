@@ -46,7 +46,7 @@ class ToolingModelChecker {
     }
 
     static void checkDomainObjectSet(DomainObjectSet<?> actual, DomainObjectSet<?> expected, Closure checker) {
-        actual.size() == expected.size()
+        assert actual.size() == expected.size()
         [actual, expected].collect { it.all }
             .transpose()
             .each { actualItem, expectedItem ->
@@ -68,6 +68,8 @@ class ToolingModelChecker {
                 if (expectedValue instanceof DomainObjectSet) {
                     assert actualValue instanceof DomainObjectSet
                     checkDomainObjectSet(actualValue, expectedValue, checker)
+                } else {
+                    checker(actualValue, expectedValue)
                 }
             } else if (checker instanceof List) {
                 def subSpecs = checker as List
