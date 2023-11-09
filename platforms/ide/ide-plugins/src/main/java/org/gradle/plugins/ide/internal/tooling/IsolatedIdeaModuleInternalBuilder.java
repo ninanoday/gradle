@@ -22,9 +22,9 @@ import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
+import org.gradle.plugins.ide.idea.internal.IdeaModuleInternal;
 import org.gradle.plugins.ide.idea.model.Dependency;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.plugins.ide.idea.model.IdeaModule;
 import org.gradle.plugins.ide.internal.tooling.model.IsolatedIdeaModuleInternal;
 import org.gradle.tooling.provider.model.ParameterizedToolingModelBuilder;
 
@@ -60,7 +60,7 @@ public class IsolatedIdeaModuleInternalBuilder implements ParameterizedToolingMo
         project.getPluginManager().apply(IdeaPlugin.class);
 
         IdeaModel ideaModelExt = project.getExtensions().getByType(IdeaModel.class);
-        IdeaModule ideaModuleExt = ideaModelExt.getModule();
+        IdeaModuleInternal ideaModuleExt = (IdeaModuleInternal) ideaModelExt.getModule();
 
         ideaModuleExt.setOffline(offlineDependencyResolution);
         Set<Dependency> resolvedDependencies = ideaModuleExt.resolveDependencies();
@@ -74,8 +74,8 @@ public class IsolatedIdeaModuleInternalBuilder implements ParameterizedToolingMo
 
         // Simulating IdeaPlugin to only expose these values when 'java' plugin is applied
         if (project.getPlugins().hasPlugin(JavaPlugin.class)) {
-            model.setExplicitSourceLanguageLevel(ideaModuleExt.getLanguageLevelInternal());
-            model.setExplicitTargetBytecodeVersion(ideaModuleExt.getTargetBytecodeVersionInternal());
+            model.setExplicitSourceLanguageLevel(ideaModuleExt.getRawLanguageLevel());
+            model.setExplicitTargetBytecodeVersion(ideaModuleExt.getRawTargetBytecodeVersion());
         }
 
         // Simulating IdeaPlugin to only expose these values when 'java-base' plugin is applied

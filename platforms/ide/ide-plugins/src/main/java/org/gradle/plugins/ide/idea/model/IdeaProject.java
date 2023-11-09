@@ -125,8 +125,8 @@ public abstract class IdeaProject implements IdeWorkspace {
 
     private List<IdeaModule> modules;
     private String jdkName;
-    private IdeaLanguageLevel languageLevel;
-    private JavaVersion targetBytecodeVersion;
+    protected IdeaLanguageLevel languageLevel;
+    protected JavaVersion targetBytecodeVersion;
     private String vcs;
     private Set<String> wildcards = Sets.newLinkedHashSet();
     private RegularFileProperty outputFile;
@@ -361,12 +361,4 @@ public abstract class IdeaProject implements IdeWorkspace {
         }
     }
 
-    // TODO: this is accidental public API, and a different solution must be found
-    public IdeaLanguageLevel getLanguageLevelInternal() {
-        return languageLevel;
-    }
-
-    public JavaVersion getTargetBytecodeVersionInternal() {
-        return targetBytecodeVersion;
-    }
 }

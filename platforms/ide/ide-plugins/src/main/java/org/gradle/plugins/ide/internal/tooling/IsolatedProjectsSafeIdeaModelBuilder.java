@@ -22,9 +22,9 @@ import org.gradle.api.NonNullApi;
 import org.gradle.api.Project;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
 import org.gradle.plugins.ide.idea.internal.IdeaModuleSupport;
+import org.gradle.plugins.ide.idea.internal.IdeaProjectInternal;
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.plugins.ide.idea.model.IdeaProject;
 import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaJavaLanguageSettings;
 import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaLanguageLevel;
 import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaModule;
@@ -81,7 +81,7 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
         // This means, the plugin has to be made CC and IP compatible, at least for the root
         rootProject.getPluginManager().apply(IdeaPlugin.class);
         IdeaModel ideaModelExt = rootProject.getPlugins().getPlugin(IdeaPlugin.class).getModel();
-        IdeaProject ideaProjectExt = ideaModelExt.getProject();
+        IdeaProjectInternal ideaProjectExt = (IdeaProjectInternal) ideaModelExt.getProject();
 
         List<Project> allProjects = new ArrayList<>(rootProject.getAllprojects());
         List<IsolatedIdeaModuleInternal> allIsolatedIdeaModules = getIsolatedIdeaModules(allProjects, parameter);
@@ -105,8 +105,8 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
     }
 
     // Simulates computation of the language level property *for the root project* in the IdeaPlugin
-    private static IdeaLanguageLevel resolveRootLanguageLevel(IdeaProject ideaProjectExt, List<IsolatedIdeaModuleInternal> isolatedModules) {
-        IdeaLanguageLevel explicitLanguageLevel = ideaProjectExt.getLanguageLevelInternal();
+    private static IdeaLanguageLevel resolveRootLanguageLevel(IdeaProjectInternal ideaProjectExt, List<IsolatedIdeaModuleInternal> isolatedModules) {
+        IdeaLanguageLevel explicitLanguageLevel = ideaProjectExt.getRawLanguageLevel();
         if (explicitLanguageLevel != null) {
             return explicitLanguageLevel;
         }
@@ -116,8 +116,8 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
     }
 
     // Simulates computation of the target bytecode version property *for the root project* in the IdeaPlugin
-    private static JavaVersion resolveRootTargetBytecodeVersion(IdeaProject ideaProjectExt, List<IsolatedIdeaModuleInternal> isolatedModules) {
-        JavaVersion explicitTargetBytecodeVersion = ideaProjectExt.getTargetBytecodeVersionInternal();
+    private static JavaVersion resolveRootTargetBytecodeVersion(IdeaProjectInternal ideaProjectExt, List<IsolatedIdeaModuleInternal> isolatedModules) {
+        JavaVersion explicitTargetBytecodeVersion = ideaProjectExt.getRawTargetBytecodeVersion();
         if (explicitTargetBytecodeVersion != null) {
             return explicitTargetBytecodeVersion;
         }

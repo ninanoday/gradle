@@ -49,8 +49,10 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.xml.XmlTransformer;
 import org.gradle.plugins.ide.api.XmlFileContentMerger;
+import org.gradle.plugins.ide.idea.internal.IdeaModuleInternal;
 import org.gradle.plugins.ide.idea.internal.IdeaModuleMetadata;
 import org.gradle.plugins.ide.idea.internal.IdeaModuleSupport;
+import org.gradle.plugins.ide.idea.internal.IdeaProjectInternal;
 import org.gradle.plugins.ide.idea.internal.IdeaScalaConfigurer;
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -170,7 +172,8 @@ public abstract class IdeaPlugin extends IdePlugin {
     private void configureIdeaProject(final Project project) {
         if (isRoot()) {
             XmlFileContentMerger ipr = new XmlFileContentMerger(new XmlTransformer());
-            final IdeaProject ideaProject = instantiator.newInstance(IdeaProject.class, project, ipr);
+            // Instantiating an internal subclass is required for Isolated Projects-safe model building
+            final IdeaProject ideaProject = instantiator.newInstance(IdeaProjectInternal.class, project, ipr);
             final TaskProvider<GenerateIdeaProject> projectTask = project.getTasks().register(IDEA_PROJECT_TASK_NAME, GenerateIdeaProject.class, ideaProject);
             projectTask.configure(new Action<GenerateIdeaProject>() {
                 @Override
@@ -260,7 +263,8 @@ public abstract class IdeaPlugin extends IdePlugin {
 
     private void configureIdeaModule(final ProjectInternal project) {
         IdeaModuleIml iml = new IdeaModuleIml(new XmlTransformer(), project.getProjectDir());
-        final IdeaModule module = instantiator.newInstance(IdeaModule.class, project, iml);
+        // Instantiating an internal subclass is required for Isolated Projects-safe model building
+        final IdeaModule module = instantiator.newInstance(IdeaModuleInternal.class, project, iml);
 
         final TaskProvider<GenerateIdeaModule> task = project.getTasks().register(IDEA_MODULE_TASK_NAME, GenerateIdeaModule.class, module);
         task.configure(new Action<GenerateIdeaModule>() {

@@ -185,8 +185,8 @@ public abstract class IdeaModule {
     private File testOutputDir;
     private Map<String, File> pathVariables = Maps.newLinkedHashMap();
     private String jdkName;
-    private IdeaLanguageLevel languageLevel;
-    private JavaVersion targetBytecodeVersion;
+    protected IdeaLanguageLevel languageLevel;
+    protected JavaVersion targetBytecodeVersion;
     private final IdeaModuleIml iml;
     private final Project project;
     private PathFactory pathFactory;
@@ -666,15 +666,6 @@ public abstract class IdeaModule {
 
     private Set<Path> pathsOf(Set<File> files) {
         return files.stream().map(file -> getPathFactory().path(file)).collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
-    // TODO: this is accidental public API, and a different solution must be found
-    public IdeaLanguageLevel getLanguageLevelInternal() {
-        return languageLevel;
-    }
-
-    public JavaVersion getTargetBytecodeVersionInternal() {
-        return targetBytecodeVersion;
     }
 
 }
