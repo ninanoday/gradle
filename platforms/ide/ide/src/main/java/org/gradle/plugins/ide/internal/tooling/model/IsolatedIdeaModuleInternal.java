@@ -16,6 +16,7 @@
 
 package org.gradle.plugins.ide.internal.tooling.model;
 
+import com.google.common.collect.ImmutableList;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.NonNullApi;
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel;
@@ -25,7 +26,6 @@ import org.gradle.plugins.ide.internal.tooling.idea.DefaultIdeaDependency;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -44,7 +44,7 @@ public class IsolatedIdeaModuleInternal implements Serializable {
     private DefaultIdeaContentRoot contentRoot;
     private String jdkName;
     private DefaultIdeaCompilerOutput compilerOutput;
-    private List<DefaultIdeaDependency> dependencies = new LinkedList<>();
+    private List<DefaultIdeaDependency> dependencies = ImmutableList.of();
 
     public String toString() {
         return "IsolatedIdeaModuleInternal{"
@@ -125,6 +125,6 @@ public class IsolatedIdeaModuleInternal implements Serializable {
     }
 
     public void setDependencies(List<DefaultIdeaDependency> dependencies) {
-        this.dependencies = dependencies;
+        this.dependencies = ImmutableList.copyOf(dependencies); // also ensures it's serializable
     }
 }
