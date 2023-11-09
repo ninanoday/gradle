@@ -59,7 +59,7 @@ class ToolingModelChecker {
             def getter = spec as Closure
             assert getter(actual) == getter(expected)
         } else if (spec instanceof List) {
-            assert spec.size() == 2, "spec in the form of a list must have 2 items: a getter and a sub-spec"
+            assert spec.size() == 2
             def getter = spec[0] as Closure
             def checker = spec[1]
             def actualValue = getter(actual)
