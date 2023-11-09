@@ -71,12 +71,11 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
         // TODO: support the case when target is not root project
         Project root = project.getRootProject();
         // TODO: do we need to apply the idea plugin to all included builds? (vanilla builder does it)
-        DefaultGradleProject rootGradleProject = gradleProjectBuilder.buildForRoot(project);
         IsolatedIdeaModuleParameter parameter = createParameter(offlineDependencyResolution);
-        return buildRoot(root, rootGradleProject, parameter);
+        return buildRoot(root, parameter);
     }
 
-    private DefaultIdeaProject buildRoot(Project rootProject, DefaultGradleProject rootGradleProject, IsolatedIdeaModuleParameter parameter) {
+    private DefaultIdeaProject buildRoot(Project rootProject, IsolatedIdeaModuleParameter parameter) {
         // We have to apply the plugin to the root, because users might have done it themselves, and overridden some settings via the extension
         // This means, the plugin has to be made CC and IP compatible, at least for the root
         rootProject.getPluginManager().apply(IdeaPlugin.class);
@@ -89,7 +88,20 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
         IdeaLanguageLevel languageLevel = resolveRootLanguageLevel(ideaProjectExt, allIsolatedIdeaModules);
         JavaVersion targetBytecodeVersion = resolveRootTargetBytecodeVersion(ideaProjectExt, allIsolatedIdeaModules);
 
-        DefaultIdeaProject out = new DefaultIdeaProject()
+        DefaultIdeaProject out = buildWithoutChildren(ideaProjectExt, languageLevel, targetBytecodeVersion);
+
+        // Important to build GradleProject after the IsolatedIdeaModuleInternal requests,
+        // to make sure IdeaPlugin is applied to each project and its tasks are registered
+        DefaultGradleProject rootGradleProject = gradleProjectBuilder.buildForRoot(rootProject);
+
+        IdeaModuleBuilder ideaModuleBuilder = new IdeaModuleBuilder(rootGradleProject, languageLevel, targetBytecodeVersion);
+        out.setChildren(createIdeaModules(out, ideaModuleBuilder, allProjects, allIsolatedIdeaModules));
+
+        return out;
+    }
+
+    private static DefaultIdeaProject buildWithoutChildren(IdeaProjectInternal ideaProjectExt, IdeaLanguageLevel languageLevel, JavaVersion targetBytecodeVersion) {
+        return new DefaultIdeaProject()
             .setName(ideaProjectExt.getName())
             .setJdkName(ideaProjectExt.getJdkName())
             .setLanguageLevel(new DefaultIdeaLanguageLevel(languageLevel.getLevel()))
@@ -97,11 +109,6 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
                 .setSourceLanguageLevel(IdeaModuleBuilderSupport.convertToJavaVersion(languageLevel))
                 .setTargetBytecodeVersion(targetBytecodeVersion)
                 .setJdk(DefaultInstalledJdk.current()));
-
-        IdeaModuleBuilder ideaModuleBuilder = new IdeaModuleBuilder(rootGradleProject, languageLevel, targetBytecodeVersion);
-        out.setChildren(createIdeaModules(out, ideaModuleBuilder, allProjects, allIsolatedIdeaModules));
-
-        return out;
     }
 
     // Simulates computation of the language level property *for the root project* in the IdeaPlugin
