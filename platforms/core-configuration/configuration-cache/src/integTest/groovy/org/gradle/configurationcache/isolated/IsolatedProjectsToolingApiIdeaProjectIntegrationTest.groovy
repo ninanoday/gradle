@@ -16,7 +16,7 @@
 
 package org.gradle.configurationcache.isolated
 
-
+import org.gradle.api.JavaVersion
 import org.gradle.tooling.model.idea.IdeaContentRoot
 import org.gradle.tooling.model.idea.IdeaDependency
 import org.gradle.tooling.model.idea.IdeaJavaLanguageSettings
@@ -38,7 +38,6 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
     def "can fetch IdeaProject model for empty projects"() {
         settingsFile << """
             rootProject.name = 'root'
-
             include(":lib1")
             include(":lib1:lib11")
         """
@@ -62,6 +61,52 @@ class IsolatedProjectsToolingApiIdeaProjectIntegrationTest extends AbstractIsola
             // intermediate IsolatedGradleProject, IsolatedIdeaModule
             modelsCreated(":lib1", 2)
             modelsCreated(":lib1:lib11", 2)
+        }
+
+        then:
+        checkIdeaProject(ideaModel, expectedIdeaModel)
+
+        when: "fetching again with Isolated Projects"
+        executer.withArguments(ENABLE_CLI)
+        fetchModel(IdeaProject)
+
+        then:
+        fixture.assertStateLoaded()
+    }
+
+    def "can fetch IdeaProject model for java projects"() {
+        settingsFile << """
+            rootProject.name = 'root'
+            include(":lib1")
+        """
+
+        file("lib1/build.gradle") << """
+            plugins {
+                id 'java'
+            }
+            java.targetCompatibility = JavaVersion.VERSION_1_8
+            java.sourceCompatibility = JavaVersion.VERSION_1_8
+        """
+
+        when: "fetching without Isolated Projects"
+        def expectedIdeaModel = fetchModel(IdeaProject)
+
+        then:
+        fixture.assertNoConfigurationCache()
+        expectedIdeaModel.modules.name == ["root", "lib1"]
+        expectedIdeaModel.javaLanguageSettings.languageLevel == JavaVersion.VERSION_1_8
+        expectedIdeaModel.javaLanguageSettings.targetBytecodeVersion == JavaVersion.VERSION_1_8
+
+        when: "fetching with Isolated Projects"
+        executer.withArguments(ENABLE_CLI)
+        def ideaModel = fetchModel(IdeaProject)
+
+        then:
+        fixture.assertStateStored {
+            // IdeaProject, intermediate IsolatedGradleProjectInternal, IsolatedIdeaModuleInternal
+            modelsCreated(":", 3)
+            // intermediate IsolatedGradleProject, IsolatedIdeaModule
+            modelsCreated(":lib1", 2)
         }
 
         then:
