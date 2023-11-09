@@ -152,6 +152,7 @@ public class IsolatedProjectsSafeIdeaModelBuilder implements IdeaModelBuilderInt
         return () -> offlineDependencyResolution;
     }
 
+    @NonNullApi
     private static class IdeaModuleBuilder {
 
         private final DefaultGradleProject rootGradleProject;
